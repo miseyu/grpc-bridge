@@ -1,0 +1,17 @@
+version: '2'
+services:
+  grpc:
+    build:
+      context: ./service
+    command: ["/app/bin/grpc-bridge"]
+    ports:
+      - "8081:8081"
+  client:
+    build:
+      context: ./client
+    entrypoint: ["/app/bin/grpc-bridge-client"]
+    environment:
+      - "GRPC_HOST=grpc"
+      - "GRPC_PORT=8081"
+    depends_on:
+      - grpc
