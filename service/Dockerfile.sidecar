@@ -1,0 +1,5 @@
+FROM envoyproxy/envoy:v1.10.0
+
+COPY ./config/envoy-sidecar.yaml /etc/envoy-sidecar.yaml
+RUN mkdir /var/log/envoy/
+CMD /usr/local/bin/envoy -c /etc/envoy-sidecar.yaml

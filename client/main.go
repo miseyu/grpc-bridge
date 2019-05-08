@@ -6,10 +6,9 @@ import (
 	"os"
 
 	"github.com/envoyproxy/envoy/examples/grpc-bridge/client/kv"
+	"github.com/gin-gonic/gin"
 
 	"google.golang.org/grpc"
-
-	"github.com/spf13/cobra"
 )
 
 type set struct {
@@ -21,89 +20,50 @@ type get struct {
 	key string
 }
 
-var setOpt set
-var getOpt get
 var host string
 var port string
-
-var rootCmd = &cobra.Command{
-	Use:           "kv",
-	Short:         "key value memory store",
-	SilenceErrors: true,
-	SilenceUsage:  true,
-}
+var client kv.KVClient
 
 func init() {
-	cobra.OnInitialize()
-	rootCmd.AddCommand(
-		setCmd(),
-		getCmd(),
-	)
 	host = os.Getenv("GRPC_HOST")
 	if host == "" {
 		host = "localhost"
 	}
 	port = os.Getenv("GRPC_PORT")
 	if port == "" {
-		port = "8081"
+		port = "9211"
 	}
+	c, err := createClient()
+	if err != nil {
+		panic(err)
+	}
+	client = c
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		rootCmd.SetOutput(os.Stderr)
-		rootCmd.Println(err)
-		os.Exit(1)
-	}
-}
-
-func setCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "set key value",
-		Short: "set keyValue",
-		Run: func(cmd *cobra.Command, args []string) {
-			c, err := createClient()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "grpc connect error: %v\n", err)
-				return
-			}
-			req := kv.SetRequest{Key: setOpt.key, Value: setOpt.value}
-			_, err = c.Set(context.Background(), &req)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "grpc set: %v\n", err)
-				return
-			}
-			fmt.Print("grpc set finished\n")
-		},
-	}
-	flags := cmd.Flags()
-	flags.StringVarP(&setOpt.key, "key", "k", "", "key")
-	flags.StringVarP(&setOpt.value, "value", "v", "", "value")
-	return cmd
-}
-
-func getCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "get key",
-		Short: "get keyValue",
-		Run: func(cmd *cobra.Command, args []string) {
-			c, err := createClient()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "grpc connect error: %v\n", err)
-				return
-			}
-			req := kv.GetRequest{Key: getOpt.key}
-			res, err := c.Get(context.Background(), &req)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "grpc get: %v\n", err)
-				return
-			}
-			fmt.Printf("%s = %s", getOpt.key, res.GetValue())
-		},
-	}
-	flags := cmd.Flags()
-	flags.StringVarP(&getOpt.key, "key", "k", "", "key")
-	return cmd
+	r := gin.Default()
+	r.GET("/set", func(c *gin.Context) {
+		key := c.Query("key")
+		value := c.Query("value")
+		req := kv.SetRequest{Key: key, Value: value}
+		_, err := client.Set(context.Background(), &req)
+		if err != nil {
+			c.String(500, fmt.Sprintf("error %v", err))
+			return
+		}
+		c.String(200, "Success")
+	})
+	r.GET("/get", func(c *gin.Context) {
+		key := c.Query("key")
+		req := kv.GetRequest{Key: key}
+		res, err := client.Get(context.Background(), &req)
+		if err != nil {
+			c.String(500, "Error")
+			return
+		}
+		c.String(200, fmt.Sprintf("key=%s value=%s", key, res.GetValue()))
+	})
+	r.Run("0.0.0.0:8080")
 }
 
 func createClient() (kv.KVClient, error) {

@@ -3,9 +3,6 @@ REVISION   := $(shell git rev-parse --short HEAD)
 
 SRCS    := $(shell find . -type f -name '*.go')
 LDFLAGS := -ldflags="-s -w -X \"main.Revision=$(REVISION)\" -extldflags \"-static\""
-SQ_DATABASE_SCHEMA_TMP_PATH := tmp/sq-database-schema
-SQ_DATABASE_NAME ?= sq_manage_test
-SQ_ENV ?= test
 
 bin/$(NAME): $(SRCS)
 	@go build -a -tags netgo -installsuffix netgo $(LDFLAGS) -o bin/$(NAME)
@@ -32,4 +29,4 @@ docker-builder-build:
 
 .PHONY: docker-build
 docker-build:
-	docker build --cache-from=$(NAME):builder -t $(NAME):latest .
+	docker build --cache-from=$(NAME):builder -t $(NAME):1.0.1 .
