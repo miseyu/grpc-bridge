@@ -8,7 +8,7 @@ import (
 
 	"sync"
 
-	kv "github.com/envoyproxy/envoy/examples/grpc-bridge/service/gen"
+	kv "github.com/miseyu/grpc-bridge/service/gen"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
